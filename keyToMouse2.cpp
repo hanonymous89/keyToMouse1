@@ -6,6 +6,7 @@
 #include <string_view>
 #include <iterator>
 #include <fstream>
+#include <array>
 #include <mutex>
 #include <algorithm>
 namespace ano {
@@ -66,66 +67,108 @@ namespace ano {
 		}
 
 	};
+	class Button {
+	private:
+		bool is_on;
+	public:
+		inline auto get() const{
+			return is_on;
+		}
+		inline auto changeover() {
+			return is_on = !is_on;
+		}
+	};
+	class KeyToMouseMove{
+	private:
+		int key,mKey;
+		int pos=0;
+	public:
+		inline KeyToMouseMove(decltype(key) key,decltype(mKey) mKey) :key(key),mKey(mKey) {
+
+		}
+		inline auto get() {
+			return pos;
+		}
+		inline bool tryEvent() {
+			pos = 0;
+			if (GetAsyncKeyState(key)) {
+				--pos;
+				return true;
+			}
+			else if (GetAsyncKeyState(mKey)) {
+				++pos;
+				return true;
+			}
+			return false;
+		}
+	};
+	class KeyToMouseEventPairInterface {
+	private :
+		const int key;
+		const std::pair<std::pair<DWORD,DWORD>, std::pair<DWORD,DWORD> > events;
+	public:
+		inline KeyToMouseEventPairInterface(decltype(key) key, decltype(events) events) :key(key),events(events) {}
+		inline  auto doEvent(const bool first,const bool x)const {
+			if ((GetAsyncKeyState(key) == 0) ^ x) {
+				const auto data = first ? events.first : events.second;
+				ano::mouseEvent(data.first,data.second);
+				return true;
+			}
+			return false;
+		}
+		inline  virtual void tryEvent() = 0;
+	};
+	class KeyToMouseEventSpace:public KeyToMouseEventPairInterface{
+	public:
+		KeyToMouseEventSpace(int key, std::pair<DWORD,DWORD> noMod,std::pair<DWORD,DWORD> mod) :KeyToMouseEventPairInterface(key,{ noMod, mod}) {}
+		inline void tryEvent() override{
+			KeyToMouseEventPairInterface::doEvent(/*!*/GetAsyncKeyState(VK_SPACE),true);
+		}
+	};
+	class KeyToMouseEventSwitch:Button,public KeyToMouseEventPairInterface{
+	private:
+	public:
+		KeyToMouseEventSwitch(int key, int on, int off) :KeyToMouseEventPairInterface(key, { {on,0},{off,0} }) {
+
+		}
+		inline void tryEvent()override {
+			if ((!get() && KeyToMouseEventPairInterface::doEvent(true,true)) || (get() && KeyToMouseEventPairInterface::doEvent(false,false))) {
+				changeover();  
+			}
+		}
+	};
 }
-int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,PSTR lpCmdLine,int nCmsShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmsShow) {
 	enum DATA {
 		SPEED,
 		BOOST
 	};
-	constexpr auto DEFAULT_BOOST = 1,DEFAULT_SPEED=0;
-	const auto data=ano::split(ano::File("data.txt").read().getContent(),"\n");
+	constexpr auto DEFAULT_BOOST = 1, DEFAULT_SPEED = 0;
+	const auto data = ano::split(ano::File("data.txt").read().getContent(), "\n");
 	const auto interval = DATA::SPEED < data.size() ? ano::stoull(data[DATA::SPEED], DEFAULT_SPEED) : DEFAULT_SPEED;//boost=default
 	const decltype(interval) boost = (interval / (DATA::BOOST < data.size() ? ano::stod(data[DATA::BOOST], DEFAULT_BOOST) : DEFAULT_BOOST));
-	bool lClk=false, rClk=false, mClk=false;
+	ano::KeyToMouseMove horizon(0x4A, 0x4C);
+	ano::KeyToMouseMove vertical(0x49,0x4B );
+	ano::KeyToMouseEventSpace scrollLeftUp('G', { MOUSEEVENTF_HWHEEL,-WHEEL_DELTA }, { MOUSEEVENTF_WHEEL,-WHEEL_DELTA });
+	ano::KeyToMouseEventSpace scrollRightDown('H', { MOUSEEVENTF_HWHEEL,WHEEL_DELTA }, { MOUSEEVENTF_WHEEL,WHEEL_DELTA });
+	ano::KeyToMouseEventSwitch lButton('S', MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+	ano::KeyToMouseEventSwitch rButton('F', MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP);
+	ano::KeyToMouseEventSwitch mButton('D', MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP);
+	std::array < ano::KeyToMouseEventPairInterface*, 5/*btn length*/ > btns{
+		&scrollLeftUp,
+		&scrollRightDown,
+		&lButton,
+		&rButton,
+		&mButton
+	};
 	while (!GetAsyncKeyState('M')&& !GetAsyncKeyState(VK_CONTROL)) {//multiThread
-		constexpr auto SPEED = 1;
-		std::this_thread::sleep_for(std::chrono::nanoseconds((GetAsyncKeyState(/*VK_SPACE*/VK_SHIFT) != 0) ? boost : interval));//interval/is_boost?boost:defboost
-		int xSpeed=0, ySpeed= 0;
-		if (GetAsyncKeyState(0x4A)) {
-			xSpeed = -SPEED;
+		if (horizon.tryEvent() | vertical.tryEvent()) {
+			ano::setCursorRelativePos(horizon.get(), vertical.get());
 		}
-		else if (GetAsyncKeyState(0x4C)) {
-			xSpeed = SPEED;
+		for (auto &btn : btns) {
+			btn->tryEvent();
 		}
-		if (GetAsyncKeyState(0x4B)) {
-			ySpeed = SPEED;
-		}
-		else if (GetAsyncKeyState(0x49)) {
-			ySpeed = -SPEED;
-		}
-		if (xSpeed || ySpeed) {
-			ano::setCursorRelativePos(xSpeed, ySpeed);
-		}
-		if (GetAsyncKeyState('G')) {
-			ano::mouseEvent((GetAsyncKeyState(VK_SPACE) != 0)?MOUSEEVENTF_WHEEL:MOUSEEVENTF_HWHEEL,-WHEEL_DELTA);
-		}
-		else if (GetAsyncKeyState('H') ) {
-			ano::mouseEvent((GetAsyncKeyState(VK_SPACE) != 0) ? MOUSEEVENTF_WHEEL : MOUSEEVENTF_HWHEEL,WHEEL_DELTA);
-		}
-		if (!lClk && GetAsyncKeyState('S')) {
-			lClk = true;
-			ano::mouseEvent(MOUSEEVENTF_LEFTDOWN, 0);
-		}
-		else if (lClk && !GetAsyncKeyState('S')) {
-			lClk = false;
-			ano::mouseEvent(MOUSEEVENTF_LEFTUP, 0);
-		}
-		if (!rClk && GetAsyncKeyState('F')) {
-			rClk = true;
-			ano::mouseEvent(MOUSEEVENTF_RIGHTDOWN, 0);
-		}
-		else if (rClk && !GetAsyncKeyState('F')) {
-			rClk = false;
-			ano::mouseEvent(MOUSEEVENTF_RIGHTUP, 0);
-		}
-		if (!mClk && GetAsyncKeyState('D')) {
-			mClk = true;
-			ano::mouseEvent(MOUSEEVENTF_MIDDLEDOWN, 0);
-		}
-		else if (mClk && !GetAsyncKeyState('D')) {
-			mClk = false;
-			ano::mouseEvent(MOUSEEVENTF_MIDDLEUP, 0);
-		}
+		std::this_thread::sleep_for(std::chrono::nanoseconds((GetAsyncKeyState(VK_SHIFT)) ? boost : interval));
 	}
 	return 0;
 }
