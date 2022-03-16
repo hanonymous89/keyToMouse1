@@ -77,30 +77,30 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,PSTR lpCmdLine,in
 	const auto interval = DATA::SPEED < data.size() ? ano::stoull(data[DATA::SPEED], DEFAULT_SPEED) : DEFAULT_SPEED;//boost=default
 	const decltype(interval) boost = (interval / (DATA::BOOST < data.size() ? ano::stod(data[DATA::BOOST], DEFAULT_BOOST) : DEFAULT_BOOST));
 	bool lClk=false, rClk=false, mClk=false;
-	while (!GetAsyncKeyState('Q')) {//multiThread
+	while (!GetAsyncKeyState('M')&& !GetAsyncKeyState(VK_CONTROL)) {//multiThread
 		constexpr auto SPEED = 1;
 		std::this_thread::sleep_for(std::chrono::nanoseconds((GetAsyncKeyState(/*VK_SPACE*/VK_SHIFT) != 0) ? boost : interval));//interval/is_boost?boost:defboost
 		int xSpeed=0, ySpeed= 0;
-		if (GetAsyncKeyState(0x4A)!=0) {
+		if (GetAsyncKeyState(0x4A)) {
 			xSpeed = -SPEED;
 		}
-		else if (GetAsyncKeyState(0x4C) != 0) {
+		else if (GetAsyncKeyState(0x4C)) {
 			xSpeed = SPEED;
 		}
-		if (GetAsyncKeyState(0x4B) != 0) {
+		if (GetAsyncKeyState(0x4B)) {
 			ySpeed = SPEED;
 		}
-		else if (GetAsyncKeyState(0x49) != 0) {
+		else if (GetAsyncKeyState(0x49)) {
 			ySpeed = -SPEED;
 		}
 		if (xSpeed || ySpeed) {
 			ano::setCursorRelativePos(xSpeed, ySpeed);
 		}
-		if (GetAsyncKeyState('G')!=0) {
-			ano::mouseEvent(MOUSEEVENTF_HWHEEL,-WHEEL_DELTA);
+		if (GetAsyncKeyState('G')) {
+			ano::mouseEvent((GetAsyncKeyState(VK_SPACE) != 0)?MOUSEEVENTF_WHEEL:MOUSEEVENTF_HWHEEL,-WHEEL_DELTA);
 		}
-		else if (GetAsyncKeyState('H') != 0) {
-			ano::mouseEvent(MOUSEEVENTF_HWHEEL,WHEEL_DELTA);
+		else if (GetAsyncKeyState('H') ) {
+			ano::mouseEvent((GetAsyncKeyState(VK_SPACE) != 0) ? MOUSEEVENTF_WHEEL : MOUSEEVENTF_HWHEEL,WHEEL_DELTA);
 		}
 		if (!lClk && GetAsyncKeyState('S')) {
 			lClk = true;
