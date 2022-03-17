@@ -27,16 +27,36 @@ HHOOK hook;
 bool active;
 LRESULT CALLBACK hookProc(int nCode,WPARAM wp,LPARAM lp) { 
 	static int horizon=0,vertical=0;
+	//static bool shift = false;
 	const auto speed = wp == WM_KEYDOWN ? 10: 0;
-	if (nCode < 0||!active) {
+	if (!active||nCode < 0  ) {
 		return CallNextHookEx(hook,nCode,wp,lp);
 	}
 	switch (((KBDLLHOOKSTRUCT*)lp)->vkCode) {
+	/*case VK_SHIFT:ghでスクロールを完結する場合
+		shift = !shift;
+		break;
+	*/
+	case 'G':
+		ano::mouseEvent(MOUSEEVENTF_HWHEEL, -WHEEL_DELTA);
+		break;
+	case 'H':
+		ano::mouseEvent(MOUSEEVENTF_HWHEEL, WHEEL_DELTA);
+		break;
+	case 'M':
+		ano::mouseEvent(MOUSEEVENTF_WHEEL, -WHEEL_DELTA);
+		break;
+	case 'E':
+		ano::mouseEvent(MOUSEEVENTF_WHEEL, WHEEL_DELTA);
+		break;
+	case 'C':
+		active = false;
+		break;
 	case 'Q':
 		PostQuitMessage(0);
 		break;
 	case 'S':
-		ano::mouseEvent(speed?MOUSEEVENTF_LEFTDOWN: MOUSEEVENTF_LEFTUP,0);
+		ano::mouseEvent(speed?MOUSEEVENTF_LEFTDOWN: MOUSEEVENTF_LEFTUP,0);//こっちにshiftでscrollでもいい
 		break;
 	case 'F':
 		ano::mouseEvent(speed ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP, 0);
@@ -70,7 +90,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,PSTR lpCmdLine,in
 	MSG msg;
 	while (GetMessage(&msg, nullptr, 0, 0)) {
 		if (msg.message == WM_HOTKEY) {
-			active = !active;
+			//active = !active;//起動と終了
+			active = true;//setwindowhookex//必要な時だけ
 		}
 		DispatchMessage(&msg);
 	}
