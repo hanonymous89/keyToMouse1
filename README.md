@@ -3,7 +3,7 @@ keyToMouse1.cpp use window message (foregroundwindowが変更されてしまう)
 keyToMouse2.cpp use timer(ちらつきあり)  
 keyToMouse3.cpp use hook(recommendation)  
 #  keyToMouse3.cppの注意  
-システムhookを使用しているのでブルースクリーンが出る場合があります。（異常終了などhookの後処理が十分にできなかった場合）
+システムhookを使用しているので異常終了などhookの後処理が十分にできなかった場合に気を付けてください
 # keyToMouse3.cpp使い方
 ## アクティブにする方法  
 ctrl+mでアクティブにできます。  
