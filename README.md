@@ -6,7 +6,7 @@ keyToMouse3.cpp use hook(recommendation)
 システムhookを使用しているのでブルースクリーンが出る場合があります。（異常終了などhookの後処理が十分にできなかった場合）
 # keyToMouse3.cpp使い方
 ## アクティブにする方法  
-ctrl+Mでアクティブにできます。  
+ctrl+mでアクティブにできます。  
 ## アクティブになってから  
 ### カーソル移動
 j=左  
